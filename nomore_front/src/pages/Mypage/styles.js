@@ -1,62 +1,17 @@
-import { css } from '@emotion/react';
+import { css } from "@emotion/react";
 
-export const layout = css`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 5rem;
-  padding: 2rem;
-  width: 100%;
-  max-width: 600px; 
-  min-width: 300px; 
-  margin-left: auto;
-  margin-right: auto;
-  background-color: #fafafa;
-  border-radius: 1rem;
-  height: 100vh;
-  box-sizing: border-box;
-`;
-
-export const inputContainer = css`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 40rem;
-  gap: 1.5rem;
-  max-height: 60vh;
-  padding-bottom: 2rem;
-`;
-
-export const inputStyle = css`
-  padding: 1rem;
-  border-radius: 0.8rem;
-  border: 1px solid #dbdbdb;
-  font-size: 1rem;
-  width: 100%;
-  box-sizing: border-box;
-
-  &::placeholder {
-    color: #aaa;
-  }
-
-  &:focus {
-    outline: none;
-    border: 1px solid #7e57c2;
-  }
-`;
-
+// 드롭다운 컨테이너
 export const dropdownContainer = css`
   position: relative;
   display: inline-block;
 `;
 
+// 드롭다운 버튼 스타일
 export const dropdownButton = css`
   position: relative;
   padding: 12px 16px;
-  background-color: #ffffff;
   border: none;
   border-right: 1px solid #d1d5db;
-  width: 100%;
   font-size: 14px;
   color: #374151;
   cursor: pointer;
@@ -83,30 +38,7 @@ export const dropdownButton = css`
   }
 `;
 
-export const buttonContainer = css`
-  margin-top: 2rem;
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  max-width: 40rem;
-`;
-
-export const signupButton = css`
-  padding: 1rem 2rem;
-  background-color: #7e57c2;
-  color: white;
-  font-size: 1.2rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 1rem;
-  cursor: pointer;
-  width: 100%;
-
-  &:hover {
-    background-color: #673ab7;
-  }
-`;
-
+// 드롭다운 메뉴 - z-index 증가
 export const dropdownMenu = css`
   position: absolute;
   top: 100%;
@@ -120,6 +52,7 @@ export const dropdownMenu = css`
   z-index: 1000;
 `;
 
+// 드롭다운 아이템
 export const dropdownItem = css`
   display: flex;
   align-items: center;
