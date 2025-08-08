@@ -10,10 +10,8 @@
         INSERT INTO moim_tb (
             moim_title,
             moim_discription,
-            moim_member_count,
             moim_max_member,
-            moim_date,
-            moim_time,
+            moim_member_count,
             moim_image_path,
             district_id,
             category_id,
@@ -21,10 +19,8 @@
         ) VALUES (
             #{title},
             #{discription},
-            #{memberCount},
             #{maxMember},
-            #{date},
-            #{time},
+            1,
             #{moimImgPath},
             #{districtId},
             #{categoryId},
@@ -38,21 +34,108 @@
         where moim_id = #{moimId}
     </update>
 
+    <update id="updateMoim">
+        UPDATE moim_tb
+        <set>
+            <if test="title != null">moim_title = #{title},</if>
+            <if test="discription != null">moim_discription = #{discription},</if>
+            <if test="maxMember != null">moim_max_member = #{maxMember},</if>
+            <if test="moimImgPath != null">moim_img_path = #{moimImgPath},</if>
+        </set>
+        WHERE moim_id = #{moimId}
+    </update>
+
+    <delete id="deleteMoimById" parameterType="int">
+        DELETE FROM moim_tb
+        WHERE moim_id = #{moimId}
+    </delete>
+
+
+    <select id="findByMoimId" resultType="com.korit.nomoreback.domain.moim.Moim">
+        SELECT
+            moim_id,
+            moim_title,
+            moim_discription,
+            moim_member_count,
+            moim_img_path
+        FROM
+            moim_tb
+        WHERE
+            moim_id = #{moimId}
+    </select>
+
     <select id="findAll" resultType="com.korit.nomoreback.domain.moim.Moim">
         select
-            *
+            moim_id,
+            moim_title,
+            moim_discription,
+            moim_member_count,
+            moim_img_path
         from
             moim_tb
     </select>
 
-    <select id="findByMoimId" resultType="com.korit.nomoreback.domain.moim.Moim">
-            select
-                *
-            from
-                moim_tb
-            where
-                moim_id = #{moimId}
+    <select id="findMoimByUserId" resultType="com.korit.nomoreback.domain.moim.Moim">
+        SELECT
+            m.moim_id,
+            m.moim_title,
+            m.moim_discription,
+            m.moim_member_count,
+            m.moim_img_path
+        FROM
+            moim_tb m
+        JOIN
+            user_tb u ON m.category_id = u.category_id
+        WHERE
+            u.user_id = #{userId}
     </select>
 
+    <select id="findMoimByCategoryId" resultType="com.korit.nomoreback.domain.moim.Moim">
+        SELECT
+            moim_id,
+            moim_title,
+            moim_discription,
+            moim_member_count,
+            moim_img_path
+        FROM
+            moim_tb
+        WHERE
+            (#{categoryId} = 1 OR category_id = #{categoryId})
+    </select>
+    <select id="searchMoim" parameterType="com.korit.nomoreback.dto.moim.MoimSearchReqDto" resultType="com.korit.nomoreback.dto.moim.MoimListRespDto">
+        SELECT
+        m.moim_id AS moimId,
+        m.moim_title AS moimTitle,
+        m.moim_discription AS moimDiscription,
+        m.moim_member_count AS moimMemberCount,
+        m.moim_max_member AS moimMaxMember,
+        m.district_id AS districtId, d.district_name AS districtName,
+        m.category_id AS categoryId, c.category_name AS categoryName,
+        m.user_id AS userId, u.nick_name AS nickName,
+        m.moim_img_path AS moimImagePath
+        FROM moim_tb m
+        JOIN district_tb d ON m.district_id = d.district_id
+        JOIN category_tb c ON m.category_id = c.category_id
+        JOIN user_tb u ON m.user_id = u.user_id
+        <where>
+            <if test="districtId != null">
+                m.district_id = #{districtId}
+            </if>
+            <if test="categoryId != null and categoryId != 1">
+                <choose>
+                    <when test="districtId != null">
+                        AND m.category_id = #{categoryId}
+                    </when>
+                    <otherwise>
+                        m.category_id = #{categoryId}
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (m.moim_title LIKE CONCAT('%', #{keyword}, '%') OR m.moim_discription LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY m.moim_id DESC
+    </select>
 
 </mapper>

@@ -18,12 +18,21 @@
         <result property="provider" column="provider" />
         <result property="providerId" column="provider_id" />
     </resultMap>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="userId">
         insert into user_tb
         values (default, #{nickName}, #{fullName}, #{birthDate},
-        #{email}, #{profileImgPath}, #{introduction}, #{gender}, #{categoryId}, #{provider},#{providerId},
-        #{age})
+        #{email}, #{profileImgPath}, #{introduction}, #{gender}, #{categoryId}, #{provider},#{providerId})
     </insert>
+    <update id="updateProfile">
+        UPDATE user_tb
+        SET
+            nick_name = #{nickName},
+            introduction = #{introduction},
+            category_id = #{categoryId},
+            profile_img_path = #{profileImgPath}
+        WHERE user_id = #{userId}
+    </update>
 
     <select id="findByProviderId" resultType="com.korit.nomoreback.domain.user.User">
         select
@@ -33,6 +42,7 @@
         where
             provider_id = #{providerId}
     </select>
+
     <select id="findById" resultType="com.korit.nomoreback.domain.user.User">
         select
             ut.user_id,
@@ -51,6 +61,7 @@
         where
             ut.user_id = #{userId}
     </select>
+
     <select id="findByNicName" resultType="com.korit.nomoreback.domain.user.User">
         select
             *
@@ -59,4 +70,10 @@
         where
             nick_name = #{nickName}
     </select>
+    <select id="findProfileImgPathByUserId" resultType="java.lang.String">
+        select profile_img_path
+        from user_tb
+        where user_id = #{userId}
+    </select>
+
 </mapper>

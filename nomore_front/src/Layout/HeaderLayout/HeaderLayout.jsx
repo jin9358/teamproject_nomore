@@ -74,27 +74,28 @@ function HeaderLayout(props) {
         setIsCategoryOpen(false);
     }
 
-    /** 검색 함수 */
     const [ searchInputValue, setSearchInputValue ] = useState("");
     const combinedSearchEmpty = {
         districtId: "",
         categoryId: "",
-        search: "",
+        keyword: "",
     }
+
     const [ combinedSearch, setCombinedSearch ] = useState(combinedSearchEmpty);
     
     const handleSearchInputOnChange = (e) => {
         setSearchInputValue(e.target.value);
         setCombinedSearch(prev => ({
             ...prev,
-            search: searchInputValue,
+            keyword: e.target.value,
         }))
     }
     
     const handleSearchInputOnClick = async () => {
         try {
             const response = await reqSearch(combinedSearch);
-            console.log("검색 성공", response);
+            console.log(response)
+            navigate("/searchpage", {state: response.data})
         } catch (error) {
             console.error("검색 실패", error);
         }
