@@ -1,0 +1,49 @@
+spring:
+  profiles:
+    active: local
+    group:
+      local: local-server, common, secret
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: local-server
+
+app:
+  server-host: "http://localhost:8080"
+  image-configs:
+    profile:
+      prefix: "${app.server-host}/image/profile"
+      dir-path: "${user.dir}/upload/profile"
+      default-img: "default.jpg"
+    moim:
+      prefix: "${app.server-host}/image/moim"
+      dir-path: "${user.dir}/upload/moim"
+      default-img: "default.jpg"
+    forum:
+      prefix: "${app.server-host}/image/forum"
+      dir-path: "${user.dir}/upload/forum"
+      default-img: "default.jpg"
+---
+
+spring:
+  config:
+    activate:
+      on-profile: common
+
+  datasource:
+    url: jdbc:mysql://mysql.cj6okecyk9qf.ap-northeast-2.rds.amazonaws.com:3306/team_project
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      enabled: true
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+  type-aliases-package: com.korit.nomoreback.domain.entity
+

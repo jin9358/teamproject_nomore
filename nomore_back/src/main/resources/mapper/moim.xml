@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.korit.nomoreback.domain.moim.MoimMapper">
+    <resultMap id="MoimResultMap" type="com.korit.nomoreback.domain.moim.Moim">
+        <id property="moimId" column="moim_id" />
+        <result property="title" column="moim_title" />
+        <result property="discription" column="moim_discription" />
+        <result property="memberCount" column="moim_member_count" />
+        <result property="maxMember" column="moim_max_member" />
+        <result property="moimImgPath" column="moim_img_path" />
+        <result property="categoryId" column="category_id" />
+        <result property="districtId" column="district_id" />
+        <result property="districtName" column="district_name" />
+    </resultMap>
+
+    <insert id="createMoim" useGeneratedKeys="true" keyProperty="moimId">
+        INSERT INTO moim_tb (
+            moim_title,
+            moim_discription,
+            moim_max_member,
+            moim_member_count,
+            moim_img_path,
+            district_id,
+            category_id,
+            user_id
+        ) VALUES (
+            #{title},
+            #{discription},
+            #{maxMember},
+            1,
+            #{moimImgPath},
+            #{districtId},
+            #{categoryId},
+            #{userId}
+        )
+    </insert>
+
+    <update id="increaseMoimCount">
+        UPDATE moim_tb
+        set moim_member_count = moim_member_count + 1
+        where moim_id = #{moimId}
+    </update>
+
+    <update id="updateMoim">
+        UPDATE moim_tb
+        <set>
+            <if test="title != null">moim_title = #{title},</if>
+            <if test="discription != null">moim_discription = #{discription},</if>
+            <if test="maxMember != null">moim_max_member = #{maxMember},</if>
+            <if test="moimImgPath != null">moim_img_path = #{moimImgPath},</if>
+        </set>
+        WHERE moim_id = #{moimId}
+    </update>
+
+    <update id="moimMemberDiscount">
+        update
+            moim_tb
+        set
+            moim_member_count = moim_member_count - 1
+        where
+            moim_id = #{moimId}
+    </update>
+
+    <delete id="deleteMoimById" parameterType="int">
+        DELETE FROM moim_tb
+        WHERE moim_id = #{moimId}
+    </delete>
+
+    <select id="findByMoimId" resultMap="MoimResultMap">
+        SELECT
+            mt.moim_id,
+            mt.moim_title,
+            mt.moim_discription,
+            mt.moim_member_count,
+            mt.moim_max_member,
+            mt.moim_img_path,
+            mt.district_id,
+            mt.category_id,
+            mt.user_id,
+
+            dt.district_id,
+            dt.district_name
+        FROM
+            moim_tb mt
+            left outer join district_tb dt on(dt.district_id = mt.district_id)
+        WHERE
+            mt.moim_id = #{moimId}
+    </select>
+
+    <select id="findAll" resultMap="MoimResultMap">
+        select
+            mt.moim_id,
+            mt.moim_title,
+            mt.moim_discription,
+            mt.moim_member_count,
+            mt.moim_max_member,
+            mt.district_id as mt_district_id,
+            mt.category_id,
+            mt.user_id,
+            mt.moim_img_path,
+
+            dt.district_id,
+            dt.district_name
+        from
+            moim_tb mt
+            join district_tb dt on(dt.district_id = mt.district_id)
+    </select>
+
+    <select id="findMoimByUserId" resultMap="MoimResultMap">
+        SELECT
+            m.moim_id,
+            m.moim_title,
+            m.moim_discription,
+            m.moim_member_count,
+            m.moim_img_path,
+            m.category_id
+        FROM
+            moim_tb m
+        JOIN
+            user_tb u ON m.category_id = u.category_id
+        WHERE
+            u.user_id = #{userId}
+    </select>
+
+    <select id="findMoimByCategoryId" resultType="com.korit.nomoreback.domain.moim.Moim">
+        SELECT
+            moim_id,
+            moim_title,
+            moim_discription,
+            moim_member_count,
+            moim_img_path
+        FROM
+            moim_tb
+        WHERE
+            (#{categoryId} = 1 OR category_id = #{categoryId})
+    </select>
+    <select id="searchMoim" parameterType="com.korit.nomoreback.dto.moim.MoimSearchReqDto" resultType="com.korit.nomoreback.dto.moim.MoimListRespDto">
+        SELECT
+        m.moim_id AS moimId,
+        m.moim_title AS moimTitle,
+        m.moim_discription AS moimDiscription,
+        m.moim_member_count AS moimMemberCount,
+        m.moim_max_member AS moimMaxMember,
+        m.district_id AS districtId, d.district_name AS districtName,
+        m.category_id AS categoryId, c.category_name AS categoryName,
+        m.user_id AS userId, u.nick_name AS nickName,
+        m.moim_img_path AS moimImagePath
+        FROM moim_tb m
+        JOIN district_tb d ON m.district_id = d.district_id
+        JOIN category_tb c ON m.category_id = c.category_id
+        JOIN user_tb u ON m.user_id = u.user_id
+        <where>
+            <if test="districtId != null">
+                m.district_id = #{districtId}
+            </if>
+            <if test="categoryId != null and categoryId != 1">
+                <choose>
+                    <when test="districtId != null">
+                        AND m.category_id = #{categoryId}
+                    </when>
+                    <otherwise>
+                        m.category_id = #{categoryId}
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (m.moim_title LIKE CONCAT('%', #{keyword}, '%') OR m.moim_discription LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY m.moim_id DESC
+    </select>
+    <select id="moimUserList" resultType="com.korit.nomoreback.domain.user.User">
+        select
+            ut.*,
+            mrt.moim_role
+        from
+            moim_role_tb mrt
+            join user_tb ut on(ut.user_id = mrt.user_id)
+        where
+            mrt.moim_id = #{moimId};
+    </select>
+
+    <select id="findAllOfOptions" resultMap="MoimResultMap">
+        select
+            mt.moim_id,
+            mt.moim_title,
+            mt.moim_discription,
+            mt.moim_member_count,
+            mt.moim_max_member,
+            mt.district_id as mt_district_id,
+            mt.category_id,
+            mt.user_id,
+            mt.moim_img_path,
+
+            dt.district_id,
+            dt.district_name
+        from
+            moim_tb mt
+            left outer join district_tb dt on(dt.district_id = mt.district_id)
+        where
+            1 = 1
+            <if test="categoryId != null and categoryId != 1">
+                and category_id = #{categoryId}
+            </if>
+            <if test="districtId != null and districtId != 1">
+                and mt.district_id = #{districtId}
+            </if>
+            <if test="searchText != null and searchText != ''">
+                and (moim_title = concat('%', #{searchText}, '%') or moim_discription = concat('%', #{searchText}, '%'))
+            </if>
+        limit #{startIndex}, #{size}
+    </select>
+
+    <select id="getCountOfOptions" resultType="java.lang.Integer">
+        select
+            count(*)
+        from
+            moim_tb mt
+            left outer join district_tb dt on(dt.district_id = mt.district_id)
+        where
+            1 = 1
+            <if test="categoryId != null and categoryId != 1">
+                and category_id = #{categoryId}
+            </if>
+            <if test="districtId != null and districtId != 1">
+                and mt.district_id = #{districtId}
+            </if>
+            <if test="searchText != null and searchText != ''">
+                and (moim_title = concat('%', #{searchText}, '%') or moim_discription = concat('%', #{searchText}, '%'))
+            </if>
+    </select>
+
+</mapper>

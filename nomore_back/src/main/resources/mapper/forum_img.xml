@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.korit.nomoreback.domain.forum.ForumImgMapper">
+
+    <insert id="insertImg">
+        insert into forum_img_tb ( forum_id, seq,  path )
+        values ( #{forumId}, #{seq},  #{path})
+    </insert>
+
+    <insert id="insertMany">
+        insert into forum_img_tb( forum_id, seq,  path )
+        values
+        <foreach item="forumImg" collection="list" separator=",">
+            (#{forumImg.forumId}, #{forumImg.seq},  #{forumImg.path})
+        </foreach>
+    </insert>
+
+    <update id="modifyImg">
+        <foreach collection="imgList" item="img" separator=";">
+            update
+            forum_img_tb
+            <set>
+                <if test="img.seq != null">seq = #{img.seq},</if>
+                <if test="img.path != null">path = #{img.path}</if>
+            </set>
+            where
+            forum_img_id = #{img.forumImgId}
+        </foreach>
+    </update>
+
+    <delete id="deleteImg">
+        delete from forum_img_tb
+        where forum_img_id in
+        <foreach collection="imgIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="findImgById" resultType="com.korit.nomoreback.domain.forum.ForumImg">
+        select
+            forum_img_id,
+            forum_id,
+            seq,
+            path
+        from
+            forum_img_tb
+        where
+            forum_id = #{forumId}
+    </select>
+
+</mapper>

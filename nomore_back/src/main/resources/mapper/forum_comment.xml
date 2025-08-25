@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.korit.nomoreback.domain.forum.ForumCommentMapper">
+    <resultMap id="CommentMap" type="com.korit.nomoreback.domain.forum.ForumComment">
+        <id property="forumCommentId" column="forum_comment_id"/>
+        <result property="forumId" column="forum_id"/>
+        <result property="parentCommentId" column="parent_comment_id"/>
+        <result property="parentUserId" column="parent_user_id"/>
+        <result property="parentUsername" column="parent_username"/>
+        <result property="userId" column="user_id"/>
+        <result property="forumComment" column="forum_comment"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="level" column="level"/>
+        <result property="path" column="path"/>
+        <association property="user" resultMap="UserMap"/>
+    </resultMap>
+
+    <resultMap id="UserMap" type="com.korit.nomoreback.domain.user.User">
+        <id property="userId" column="user_id"/>
+        <result property="nickName" column="nick_name" />
+        <result property="profileImgPath" column="profile_img_path"/>
+    </resultMap>
+
+    <insert id="insert">
+        insert into forum_comment_tb(
+            forum_id,
+            parent_comment_id,
+            parent_user_id,
+            user_id,
+            forum_comment,
+            created_at
+        )
+        values (
+            #{forumId},
+            #{parentCommentId},
+            #{parentUserId},
+            #{userId},
+            #{forumComment},
+            now()
+        )
+    </insert>
+
+    <update id="modifyComment">
+        update forum_comment_tb
+        <set>
+            <if test="forumComment != null">forum_comment = #{forumComment},</if>
+            updated_at = now()
+        </set>
+        where
+            forum_comment_id = #{forumCommentId} and user_id = #{userId}
+    </update>
+
+    <delete id="deleteComment">
+        delete from forum_comment_tb
+        where
+            forum_comment_id = #{forumCommentId}
+    </delete>
+
+    <select id="findAllByForumId" resultMap="CommentMap">
+        with recursive comment_tb as (
+            select
+                forum_comment_id,
+                forum_id,
+                parent_comment_id,
+                parent_user_id,
+                user_id,
+                forum_comment,
+                created_at,
+                0 as level,
+                cast(lpad(forum_comment_id, 5, '0') as char(1000)) as path
+            from
+                forum_comment_tb
+            where
+                forum_id = #{forumId}
+                and parent_comment_id is null
+
+            union all
+
+            select
+                fct.forum_comment_id,
+                fct.forum_id,
+                fct.parent_comment_id,
+                fct.parent_user_id,
+                fct.user_id,
+                fct.forum_comment,
+                fct.created_at,
+                ct.level + 1,
+                cast(concat(ct.path, ',', lpad(fct.forum_comment_id, 5, '0')) as char(1000)) as path
+            from
+                forum_comment_tb fct
+                join comment_tb ct on(ct.forum_comment_id = fct.parent_comment_id)
+            where
+                fct.forum_id = #{forumId}
+        )
+        select
+            dense_rank() over(order by substr(ct.path, 1, 5)) as order_number,
+            ct.forum_comment_id,
+            ct.forum_id,
+            ct.parent_comment_id,
+            ct.parent_user_id,
+            put.nick_name as parent_username,
+            ct.user_id as ct_user_id,
+
+            ut.user_id,
+            ut.nick_name,
+            ut.profile_img_path,
+
+            ct.forum_comment,
+            ct.created_at,
+            ct.`level`,
+            ct.`path`
+        from
+            comment_tb ct
+            left outer join user_tb ut on(ut.user_id = ct.user_id)
+            left outer join user_tb put on (put.user_id = ct.parent_user_id)
+        order by
+            order_number desc,
+            `path`
+    </select>
+
+    <select id="getCountByForumId" resultType="java.lang.Integer">
+        select
+            count(*)
+        from
+            forum_comment_tb
+        where
+            forum_id = #{forumId}
+    </select>
+
+    <select id="findByCommentId" resultType="com.korit.nomoreback.domain.forum.ForumComment">
+        select
+            forum_comment_id,
+            forum_id,
+            parent_comment_id,
+            parent_user_id,
+            user_id,
+            forum_comment,
+            created_at,
+            updated_at
+        from forum_comment_tb
+        where forum_comment_id = #{forumCommentId}
+    </select>
+
+
+</mapper>
