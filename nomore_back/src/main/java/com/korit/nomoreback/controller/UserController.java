@@ -21,13 +21,11 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
-    private final UserMapper userMapper;
     private final UserBlockService userBlockService;
 
 
     @GetMapping("/admin")
     public ResponseEntity<List<User>> allUser() {
-        System.out.println(userService.allUser());
         return ResponseEntity.ok(userService.allUser());
     }
 
@@ -79,6 +77,13 @@ public class UserController {
     public ResponseEntity<ResponseDto<Boolean>> checkBlockStatus(@RequestParam int userId) {
         boolean blocked = userBlockService.isBlocked(userId);
         return ResponseEntity.ok(ResponseDto.success(blocked));
+    }
+
+    @DeleteMapping("{userId}")
+    public ResponseEntity<ResponseDto<?>> deleteUser(@PathVariable Integer userId) {
+        userService.deleteUser(userId);
+        System.out.println(userId);
+        return ResponseEntity.ok(ResponseDto.success("회원 탈퇴 완료"));
     }
 
 }
