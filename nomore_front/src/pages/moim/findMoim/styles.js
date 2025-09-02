@@ -1,0 +1,258 @@
+import { css } from '@emotion/react';
+
+export const containerStyle = css`
+  width: 100%;
+  margin: 0;
+  padding: 0;         /* 위쪽 여백 제거 */
+  background-color: #ffffff; /* 전체 흰색으로 변경 */
+  min-height: 100vh;  /* 화면 전체 높이 확보 */
+`;
+
+export const layout = css`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 40px; /* 상단 패딩은 최소로 */
+  border-bottom: 1px solid #e5e7eb; /* 구분선 */
+  background-color: #ffffff;
+`;
+
+export const createMoim = css`
+  margin-left: auto;
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  height: 50px;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    background-color: #0056b3;
+  }
+`;
+
+export const moimListStyle = css`
+  padding: 2rem 5rem;
+`;
+
+export const moimItemFlatStyle = css`
+  display: flex;
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #f8fafc;
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 12px;
+  }
+`;
+
+export const moimImageContainerStyle = css`
+  flex-shrink: 0;
+  width: 220px;
+  height: 120px;
+  margin-right: 20px;
+  overflow: hidden;
+  border-radius: 8px;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    height: 160px;
+    margin-right: 0;
+  }
+`;
+
+export const moimImageStyle = css`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+export const defaultImageStyle = css`
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  padding: 8px;
+  border-radius: 8px;
+`;
+
+export const moimContentStyle = css`
+  flex: 1;
+  min-width: 0;
+`;
+
+export const moimTitleRowStyle = css`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 12px;
+`;
+
+export const moimTitleStyle = css`
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.4;
+  flex: 1;
+`;
+
+export const moimDescriptionStyle = css`
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 12px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+export const moimTagsStyle = css`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+export const locationTagStyle = css`
+  background-color: #dbeafe;
+  color: #1e40af;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+`;
+
+export const categoryTagStyle = css`
+  background-color: #f3e8ff;
+  color: #7c3aed;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+`;
+
+export const memberCountTagStyle = css`
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+`;
+
+export const statusBadgeStyle = css`
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &.available {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  &.full {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+`;
+
+export const noMoimStyle = css`
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+  background: white;
+
+  .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 8px 0;
+  }
+
+  p {
+    font-size: 14px;
+    margin: 0;
+    color: #9ca3af;
+  }
+`;
+
+export const loginContainer = css`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-width: 30rem;
+  min-height: 60vh;
+  padding: 40px;
+  background-color: #f9f9f9;
+`;
+
+
+export const customLoginStyle = css`
+  background: linear-gradient(to bottom right, #7e57c2, #673ab7);
+  border: 1px solid #e0e0e0;
+  padding: 2rem;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+   & > button {
+    width: 260px;
+    height: 48px;
+    font-size: 15px;
+    border-radius: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+  }
+
+  & > button:nth-of-type(1) {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #dcdcdc;
+
+    &:hover {
+      background-color: #f1f1f1;
+    }
+  }
+
+  & > button:nth-of-type(2) {
+    background-color: #fee500;
+    color: #000000;
+
+    &:hover {
+      background-color: #ffeb3b;
+    }
+  }
+`;

@@ -10,9 +10,7 @@ export const reqfindAllMoim = async ({page, size, categoryId, districtId, search
     }
 })
 
-export const reqCreateSuggestMoim = async (data) => await api.post("/api/moim/register", data)
-
-export const reqfindSuggestMoim = async () => await api.get("/api/moim/find/categoryIdInUserId")
+export const reqCreateMoim = async (data) => await api.post("/api/moim/register", data)
 
 export const reqSelectMoim = async (moimId) => await api.get(`/api/moim/${moimId}/select`)
 
@@ -31,3 +29,15 @@ export const reqMoimUserBan = async (moimId, userId) => await api.post(`/api/moi
 export const reqMoimBanUserList = async (moimId) => await api.get(`/api/moim/${moimId}/ban`)
 
 export const reqMyMoimList = async (userId) => await api.get(`/api/moim/${userId}/moims`);
+
+export const reqTransferOwnership = (moimId, targetUserId) => api.post(`/api/moim/${moimId}/transfer-ownership`, { targetUserId });
+
+export const reqCheckUserIsOwner = async () => {
+    try {
+        const response = await api.get("/api/moim/checkowner");
+        return response;
+    } catch (error) {
+        console.error("방장 모임 확인 실패:", error);
+        throw error;
+    }
+}

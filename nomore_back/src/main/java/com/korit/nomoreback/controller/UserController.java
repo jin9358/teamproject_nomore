@@ -1,14 +1,16 @@
 package com.korit.nomoreback.controller;
 
+import com.korit.nomoreback.domain.forum.Forum;
+import com.korit.nomoreback.domain.moim.Moim;
 import com.korit.nomoreback.domain.user.User;
 import com.korit.nomoreback.domain.user.UserMapper;
 import com.korit.nomoreback.dto.response.ResponseDto;
 import com.korit.nomoreback.dto.user.UserProfileUpdateReqDto;
 import com.korit.nomoreback.security.model.PrincipalUser;
-import com.korit.nomoreback.service.UserBlockService;
-import com.korit.nomoreback.service.UserService;
+import com.korit.nomoreback.security.model.PrincipalUtil;
+import com.korit.nomoreback.service.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,36 +24,45 @@ public class UserController {
 
     private final UserService userService;
     private final UserBlockService userBlockService;
-
+    private final PrincipalUtil principalUtil;
+    private final MoimService moimService;
+    private final ForumService forumService;
+    private final BlobService blobService;
 
     @GetMapping("/admin")
     public ResponseEntity<List<User>> allUser() {
         return ResponseEntity.ok(userService.allUser());
     }
 
-    @PutMapping("/siteBlockUser")
+    @PutMapping("/banUser")
     public ResponseEntity<?> blockUser(@RequestParam Integer userId) {
         userService.blockUser(userId);
         return ResponseEntity.ok("회원 사이트 차단 완료");
     }
 
-    @PutMapping("/siteUnBlockUser")
+    @PutMapping("/liftBanUser")
     public ResponseEntity<?> unBlockUser(@RequestParam Integer userId) {
         userService.unBlockUser(userId);
         return ResponseEntity.ok("회원 사이트 차단해제 완료");
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<?> updateProfile(
-            @AuthenticationPrincipal PrincipalUser principal,
-            @ModelAttribute UserProfileUpdateReqDto userProfileUpdateReqDto,
-            @RequestParam(value = "profileImg", required = false) MultipartFile profileImg
-    ) {
-        userService.updateProfile(principal.getUser().getUserId(), userProfileUpdateReqDto, profileImg);
-        System.out.println(userProfileUpdateReqDto);
+    public ResponseEntity<?> updateProfile(@ModelAttribute UserProfileUpdateReqDto dto) {
+        userService.updateProfile(dto);
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/blob")
+    public ResponseEntity<byte[]> getImg(@RequestParam String url, @RequestParam String imageConfigsName) {
+        byte[] data = blobService.getBlob(url, imageConfigsName);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.IMAGE_JPEG);
+        headers.setContentDisposition(ContentDisposition.inline().filename("image.jpg").build());
+        headers.setContentLength(data.length);
+
+        return ResponseEntity.ok().headers(headers).body(data);
+    }
 
     @PostMapping("/userBlock")
     public ResponseEntity<ResponseDto<?>> blockUser(
@@ -86,4 +97,27 @@ public class UserController {
         return ResponseEntity.ok(ResponseDto.success("회원 탈퇴 완료"));
     }
 
+    @GetMapping("/admin/user/{userId}/moims")
+    public ResponseEntity<?> getUserMoims(@PathVariable Integer userId) {
+        String currentUserRole = principalUtil.getPrincipalUser().getUser().getUserRole();
+        if (!"ROLE_ADMIN".equals(currentUserRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("접근 권한이 없습니다");
+        }
+
+        List<Moim> userMoims = moimService.findMoimsByUserId(userId);
+        return ResponseEntity.ok(userMoims);
+    }
+
+    @GetMapping("/admin/user/{userId}/posts")
+    public ResponseEntity<?> getUserPosts(@PathVariable Integer userId) {
+        Integer currentUserId = principalUtil.getPrincipalUser().getUser().getUserId();
+        String currentUserRole = principalUtil.getPrincipalUser().getUser().getUserRole();
+
+        if (!"ROLE_ADMIN".equals(currentUserRole) && !currentUserId.equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("접근 권한이 없습니다");
+        }
+
+        List<Forum> userPosts = forumService.findPostsByUserId(userId);
+        return ResponseEntity.ok(userPosts);
+    }
 }

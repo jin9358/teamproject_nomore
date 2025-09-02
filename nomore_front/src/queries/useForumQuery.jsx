@@ -1,15 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery} from '@tanstack/react-query';
 import React from 'react';
 import { reqGetForums } from '../api/forumApi';
 
-function useForumQuery(moimId) {
-    return useQuery({
-        queryKey: ["forums", moimId],
-        queryFn: async () => await reqGetForums(moimId),
-        staleTime: 1000 * 60 * 60,
-        gcTime: 1000 * 60 * 60,
-        refetchOnMount: true,
-        refetchOnWindowFocus: true,
+function useForumQuery({size, moimId}) {
+    return useInfiniteQuery({
+        queryKey: ["forums", size, moimId],
+        queryFn: async ({pageParam = 1}) => await reqGetForums({page: pageParam, size, moimId}),
+        getNextPageParam: (lastPage, allPages) => {
+            console.log(lastPage)
+            const currentPage = lastPage.data.body.page;
+            const totalPages = lastPage.data.body.totalPages + 1;
+            return currentPage + 1 < totalPages ? currentPage + 1 : undefined;
+        },
     })
 }
 

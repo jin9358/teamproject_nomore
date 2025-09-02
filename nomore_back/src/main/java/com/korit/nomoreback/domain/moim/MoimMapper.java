@@ -11,22 +11,22 @@ import java.util.List;
 @Mapper
 public interface MoimMapper {
 
-    List<Moim> findAllOfOptions(MoimsSearchOption option);
     Integer getCountOfOptions(MoimsSearchOption option);
+    List<Moim> findAllOfOptions(MoimsSearchOption option);
 
     Integer createMoim(Moim moim);
-    Moim findByMoimId(Integer moimId);
-    void increaseMoimCount(@Param("moimId") Integer moimId);
+    Moim findMoimId(Integer moimId);
+    int updateMoimCount(@Param("moimId") Integer moimId);
     int updateMoim(Moim moim);
     int deleteMoimById(@Param("moimId") Integer moimId);
-    List<Moim> findMoimByUserId(@Param("userId") Integer userId);
     List<Moim> findMoimByCategoryId(@Param("categoryId") Integer categoryId);
 
     List<MoimListRespDto> searchMoim(MoimSearchReqDto searchReqDto);
 
     List<User> moimUserList(Integer moimId);
 
-    void moimMemberDiscount(Integer moimId);
 
     List<Moim> myMoimList(Integer userId);
+
+    List<Moim> findMoimsByUserId(@Param("userId") Integer userId);
 }

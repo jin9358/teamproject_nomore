@@ -9,6 +9,7 @@ import com.korit.nomoreback.security.model.PrincipalUtil;
 import com.korit.nomoreback.util.ImageUrlUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -24,10 +25,15 @@ public class MoimService {
     private final FileService fileService;
     private final ImageUrlUtil imageUrlUtil;
 
-    public MoimCategoryRespDto categoryMoim(MoimCategoryReqDto dto) {
+    public User getCurrentUser() {
+        return principalUtil.getPrincipalUser().getUser();
+    }
+
+    public MoimCategoryRespDto findMoims(MoimCategoryReqDto dto) {
         Integer totalElements = moimMapper.getCountOfOptions(dto.toOption());
         Integer totalPages = (int) Math.ceil(totalElements.doubleValue() / dto.getSize().doubleValue());
-        List<Moim> foundMoims = moimMapper.findAllOfOptions(dto.toOption()).stream().map(moim -> moim.buildImageUrl(imageUrlUtil)).collect(Collectors.toList());
+        List<Moim> foundMoims =
+                moimMapper.findAllOfOptions(dto.toOption()).stream().map(moim -> moim.buildImageUrl(imageUrlUtil)).collect(Collectors.toList());
         boolean isLast = foundMoims.size() < dto.getSize();
 
         return MoimCategoryRespDto.builder()
@@ -38,15 +44,17 @@ public class MoimService {
                 .size(dto.getSize())
                 .isLast(isLast)
                 .build();
-
     }
 
     public void createMoim(MoimCreateDto dto) {
-
         Moim moimEntity = dto.toEntity();
 
         String moimImgPath = fileService.uploadFile(dto.getMoimImg(), "moim");
         moimEntity.setMoimImgPath(moimImgPath);
+
+        Integer userId = getCurrentUser().getUserId();
+
+        moimEntity.setUserId(userId);
 
         moimMapper.createMoim(moimEntity);
 
@@ -58,9 +66,11 @@ public class MoimService {
     }
 
 
-    public void joinMoim(Integer moimId, Integer userId) {
+    public void joinMoim(Integer moimId) {
 
-        Moim moim = moimMapper.findByMoimId(moimId);
+        Integer userId = getCurrentUser().getUserId();
+
+        Moim moim = moimMapper.findMoimId(moimId);
         if (moim == null){
             throw new IllegalArgumentException("존재하지 않는 모임");
         }
@@ -70,6 +80,7 @@ public class MoimService {
         }
 
         boolean moimOk = moimRoleMapper.isMoimIdAndUserId(moimId, userId);
+
         if (moimOk) {
             throw new IllegalArgumentException("이미 가입 된 모임");
         }
@@ -80,68 +91,56 @@ public class MoimService {
         roleDto.setUserId(userId);
         moimRoleMapper.insertMoimRole(roleDto);
 
-        moimMapper.increaseMoimCount(moimId);
+        moimMapper.updateMoimCount(moimId);
     }
 
-    public void exitMoim(Integer moimId, Integer userId) {
+    public void exitMoim(Integer moimId) {
+
+        Integer userId = getCurrentUser().getUserId();
+
+        MoimRoleDto isOwner = moimRoleMapper.findMoimRole(userId,moimId);
+
+        if ("OWNER".equals(isOwner.getMoimRole())){
+            return;
+        }
+
+        moimMapper.updateMoimCount(moimId);
         moimRoleMapper.exitMoim(moimId, userId);
     }
 
     public Moim findMoim (Integer moimId) {
-        Moim findMoim = moimMapper.findByMoimId(moimId).buildImageUrl(imageUrlUtil);
+        moimMapper.updateMoimCount(moimId);
+        Moim findMoim = moimMapper.findMoimId(moimId).buildImageUrl(imageUrlUtil);
         return findMoim;
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public void modifyMoim(MoimModifyDto modifyDto) {
+        Integer userId = getCurrentUser().getUserId();
+        MoimRoleDto roleDto = moimRoleMapper.findMoimRole(userId, modifyDto.getMoimId());
+        String userRole = getCurrentUser().getUserRole();
+        String role = roleDto.getMoimRole();
+        Moim moim = modifyDto.toEntity();
 
-
-
-    public void modifyMoim(MoimModifyDto modifyDto, Integer userId) {
-        MoimRoleDto roleDto = moimRoleMapper.findRoleByUserAndMoimId(userId, modifyDto.getMoimId());
-        String userRole =  principalUtil.getPrincipalUser().getUser().getUserRole();
-
-        if ("ROLE_ADMIN".equals(userRole)) {
-            Moim originMoim = moimMapper.findByMoimId(modifyDto.getMoimId());
-
+        if (!"ROLE_ADMIN".equals(userRole) || !"OWNER".equals(role)) {
+            Moim originMoim = moimMapper.findMoimId(modifyDto.getMoimId());
             MultipartFile newImgFile = modifyDto.getMoimImgPath();
+            if (originMoim.getMemberCount() > modifyDto.getMaxMember()) {
+                throw new IllegalArgumentException("모임 정원 초과.");
+            }
             if (newImgFile != null && !newImgFile.isEmpty()) {
-                if (originMoim.getMoimImgPath() != null) {
-                    fileService.deleteFile(originMoim.getMoimImgPath());
-                }
+                fileService.deleteFile(originMoim.getMoimImgPath());
                 String savedFileName = fileService.uploadFile(newImgFile, "moim");
-                originMoim.setMoimImgPath(savedFileName); // 저장된 파일명만 넣기
+                moim.setMoimImgPath(savedFileName);
             }
-
-            Moim moim = modifyDto.modify(originMoim);
-            moimMapper.updateMoim(moim);
-        } else if (!"ROLE_ADMIN".equals(userRole)) {
-            if (roleDto == null) {
-                return;
-            }
-            String role = roleDto.getMoimRole();
-            if (!"OWNER".equals(role)){
-                throw new IllegalArgumentException("권한 없는 사용자");
-            }
-
-            Moim originMoim = moimMapper.findByMoimId(modifyDto.getMoimId());
-
-            MultipartFile newImgFile = modifyDto.getMoimImgPath();
-            if (newImgFile != null && !newImgFile.isEmpty()) {
-                if (originMoim.getMoimImgPath() != null) {
-                    fileService.deleteFile(originMoim.getMoimImgPath());
-                }
-                String savedFileName = fileService.uploadFile(newImgFile, "moim");
-                originMoim.setMoimImgPath(savedFileName); // 저장된 파일명만 넣기
-            }
-
-            Moim moim = modifyDto.modify(originMoim);
             moimMapper.updateMoim(moim);
         }
     }
 
-    public void deleteMoimById(Integer moimId) {
-        Integer userId = principalUtil.getPrincipalUser().getUser().getUserId();
-        String userRole =  principalUtil.getPrincipalUser().getUser().getUserRole();
-        MoimRoleDto roleDto = moimRoleMapper.findRoleByUserAndMoimId(userId, moimId);
+    public void deleteMoim(Integer moimId) {
+        Integer userId = getCurrentUser().getUserId();
+        String userRole = getCurrentUser().getUserRole();
+        MoimRoleDto roleDto = moimRoleMapper.findMoimRole(userId, moimId);
 
         if ("ROLE_ADMIN".equals(userRole)) {
             moimMapper.deleteMoimById(moimId);
@@ -157,17 +156,6 @@ public class MoimService {
         }
     }
 
-
-    public List<Moim> findMoimByCategoryIdInUserId() {
-        Integer userId = principalUtil.getPrincipalUser().getUser().getUserId();
-
-        if (userId == null) {
-            throw new IllegalArgumentException("로그인 필요");
-        }
-
-        return moimMapper.findMoimByUserId(userId);
-    }
-
     public List<MoimListRespDto> searchMoim(MoimSearchReqDto searchReqDto) {
         return moimMapper.searchMoim(searchReqDto);
     }
@@ -178,6 +166,18 @@ public class MoimService {
     }
 
     public List<Moim> myMoimList(Integer userId) {
-        return moimMapper.myMoimList(userId);
+        List<Moim> foundMoims = moimMapper.myMoimList(userId).stream().map(moim -> moim.buildImageUrl(imageUrlUtil)).collect(Collectors.toList());
+        return foundMoims;
+    }
+
+    public List<Moim> findMoimsByUserId(Integer userId) {
+        List<Moim> moims = moimMapper.findMoimsByUserId(userId);
+        return moims.stream()
+                .map(moim -> moim.buildImageUrl(imageUrlUtil))
+                .collect(Collectors.toList());
+    }
+
+    public boolean hasOwnerMoims(Integer userId) {
+        return moimRoleMapper.hasOwnerMoims(userId);
     }
 }

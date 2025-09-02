@@ -21,7 +21,13 @@
     <resultMap id="UserMap" type="com.korit.nomoreback.domain.user.User">
         <id property="userId" column="user_id"/>
         <result property="nickName" column="nick_name" />
-        <result property="profileImgPath" column="profile_img_path"/>
+        <result property="fullName" column="full_name" />
+        <result property="birthDate" column="birth_date" />
+        <result property="email" column="email" />
+        <result property="profileImgPath" column="profile_img_path" />
+        <result property="introduction" column="introduction" />
+        <result property="gender" column="gender" />
+        <result property="categoryId" column="category_id"/>
     </resultMap>
 
     <insert id="insert">
@@ -57,6 +63,10 @@
         delete from forum_comment_tb
         where
             forum_comment_id = #{forumCommentId}
+    </delete>
+    <delete id="deleteByUserId">
+        delete from forum_comment_tb
+        where user_id = #{userId}
     </delete>
 
     <select id="findAllByForumId" resultMap="CommentMap">
@@ -142,6 +152,82 @@
             updated_at
         from forum_comment_tb
         where forum_comment_id = #{forumCommentId}
+    </select>
+
+    <select id="findAllOfOptions" resultMap="CommentMap">
+        with recursive comment_tb as (
+            select
+                forum_comment_id,
+                forum_id,
+                parent_comment_id,
+                parent_user_id,
+                user_id,
+                forum_comment,
+                created_at,
+                0 as level,
+                cast(lpad(forum_comment_id, 5, '0') as char(1000)) as path
+            from
+                forum_comment_tb
+                where
+                forum_id = #{forumId}
+                and parent_comment_id is null
+        union all
+            select
+                fct.forum_comment_id,
+                fct.forum_id,
+                fct.parent_comment_id,
+                fct.parent_user_id,
+                fct.user_id,
+                fct.forum_comment,
+                fct.created_at,
+                ct.level + 1,
+                cast(concat(ct.path, ',', lpad(fct.forum_comment_id, 5, '0')) as char(1000)) as path
+            from
+                forum_comment_tb fct
+                join comment_tb ct on(ct.forum_comment_id = fct.parent_comment_id)
+            where
+                fct.forum_id = #{forumId}
+                )
+        select
+            dense_rank() over(order by substr(ct.path, 1, 5)) as order_number,
+            ct.forum_comment_id,
+            ct.forum_id,
+            ct.parent_comment_id,
+            ct.parent_user_id,
+            put.nick_name as parent_username,
+            ct.user_id as ct_user_id,
+
+            ut.user_id,
+            ut.nick_name,
+            ut.full_name,
+            ut.birth_date,
+            ut.email,
+            ut.profile_img_path,
+            ut.introduction,
+            ut.gender,
+            ut.category_id,
+
+            ct.forum_comment,
+            ct.created_at,
+            ct.`level`,
+            ct.`path`
+        from
+            comment_tb ct
+            left outer join user_tb ut on(ut.user_id = ct.user_id)
+            left outer join user_tb put on (put.user_id = ct.parent_user_id)
+            order by
+            order_number desc,
+            `path`
+        limit #{startIndex}, #{size}
+    </select>
+
+    <select id="getCountOfOptions" resultType="java.lang.Integer">
+        select
+            count(*)
+        from
+            forum_comment_tb
+        where
+            forum_id = #{forumId}
     </select>
 
 
