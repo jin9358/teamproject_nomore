@@ -22,13 +22,17 @@ function Mypage(props) {
     const [categoryList, setCategoryList] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('');
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-    const oldCategory = categories.find(prev => prev.categoryId === user.categoryId)
+    const oldCategory = categories?.find(prev => prev?.categoryId === user?.categoryId)
 
     const [myMoims, setMyMoims] = useState([]);
     const [myPosts, setMyPosts] = useState([]); // [추가]
+
     useEffect(() => {( async() => {
         const userImg = await reqModifyUserBlob({url: user.profileImgPath, imageConfigsName: "profile"});
-        const fileName = user.profileImgPath.substring(user.profileImgPath.indexOf("_") + 1);
+        const fileNameIndex = user.profileImgPath.indexOf("_");
+        const fileName = fileNameIndex >= 0 
+            ? user.profileImgPath.substring(fileNameIndex + 1) 
+            : user.profileImgPath.split("/").pop();
         const getUserImg = {
             ...user,
             profileImgPath: {
@@ -95,6 +99,8 @@ function Mypage(props) {
         }))
     }
 
+    console.log(modifyUser)
+
     const handleSaveOnclick = async () => {
         const formData = new FormData();
         const choice = categoryList.find(prev => prev.categoryName === selectedCategory)
@@ -148,10 +154,10 @@ function Mypage(props) {
     };
 
     const handleMyForumOnClick = (mf) => {
-        console.log('클릭한 게시글 데이터:', mf); // 이 로그를  
+        console.log('클릭한 게시글 데이터:', mf); 
         const forumId = mf.forumId ?? mf.id ?? mf.postId;
         const moimId = mf.moimId ?? mf.moim?.moimId;
-        console.log('forumId:', forumId, 'moimId:', moimId); // 이 로그도 추가
+        console.log('forumId:', forumId, 'moimId:', moimId); 
         if (!forumId || !moimId) return;
         navigate(`/forum/detail?moimId=${moimId}&forumId=${forumId}`);
     };
@@ -198,6 +204,28 @@ function Mypage(props) {
                             name='nickName'
                             value={modifyUser.nickName}
                             onChange={handleMypageModifyOnChange}
+                        />
+                    </div>
+                    <div css={s.infoItem}>
+                        <label css={s.infoLabel}>성별</label>
+                        <input
+                            css={s.inputStyle}
+                            type="text"
+                            name="gender"
+                            value={modifyUser.gender === 'male' ? '남자' : '여자'}
+                            onChange={handleMypageModifyOnChange}
+                            disabled
+                        />
+                    </div>
+                    <div css={s.infoItem}>
+                        <label css={s.infoLabel}>이메일</label>
+                        <input
+                            css={s.inputStyle}
+                            type="text"
+                            name="email"
+                            value={modifyUser.email}
+                            onChange={handleMypageModifyOnChange}
+                            disabled
                         />
                     </div>
 

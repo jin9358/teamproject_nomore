@@ -1,15 +1,11 @@
 package com.korit.nomoreback.controller;
 
-import com.korit.nomoreback.domain.chat.Chat;
-import com.korit.nomoreback.domain.chat.ChatImg;
-import com.korit.nomoreback.domain.chat.ChatImgMapper;
-import com.korit.nomoreback.domain.chat.ChatMapper;
+import com.korit.nomoreback.domain.chat.*;
+import com.korit.nomoreback.domain.moim.MoimMapper;
 import com.korit.nomoreback.domain.user.User;
-import com.korit.nomoreback.dto.chat.ChatImgRepDto;
-import com.korit.nomoreback.dto.chat.ChatImgUploadResponseDto;
-import com.korit.nomoreback.dto.chat.ChatMessageDto;
-import com.korit.nomoreback.dto.chat.ChatResponseDto;
+import com.korit.nomoreback.dto.chat.*;
 import com.korit.nomoreback.event.ChatOnlineUsersState;
+import com.korit.nomoreback.security.model.PrincipalUtil;
 import com.korit.nomoreback.service.ChatService;
 import com.korit.nomoreback.service.FileService;
 import com.korit.nomoreback.service.MoimService;
@@ -37,6 +33,10 @@ public class ChattingController {
     private final ChatImgMapper chatImgMapper;
     private final FileService fileService;
     private final ImageUrlUtil imageUrlUtil;
+    private final PrincipalUtil principalUtil;
+    private final MoimMapper moimMapper;
+    private final ChatReadMapper chatReadMapper;
+
 
 
     // WebSocket 채팅 메시지 수신
@@ -90,12 +90,15 @@ public class ChattingController {
                     ))
                     .toList();
 
+            List<Integer> readUsers = chatReadMapper.selectReadUser(chat.getChatId());
+
             result.add(ChatResponseDto.builder()
                     .chatId(chat.getChatId())
-                    .chattingContent(chat.getChattingContent())
+                    .chattingContent(chat.isDeleted() ? "삭제된 메시지입니다." : chat.getChattingContent())
                     .userNickName(chat.getUserNickName())
                     .chattedAt(chat.getChattedAt())
-                    .images(imgDtos)
+                    .images(chat.isDeleted() ? List.of() : imgDtos)
+                    .readUsers(readUsers) // ✅ 추가
                     .build());
         }
 
@@ -123,21 +126,30 @@ public class ChattingController {
         return ResponseEntity.ok(uploaded);
     }
 
+//    @DeleteMapping("/{chatId}")
+//    public ResponseEntity<Void> deleteChat(@PathVariable Integer chatId) {
+//        chatService.deleteChat(chatId);
+//        template.convertAndSend("/sub/chat/delete", chatId);
+//        return ResponseEntity.noContent().build();
+//    }
+
     @DeleteMapping("/{chatId}")
-    public ResponseEntity<Void> deleteChat(@PathVariable Integer chatId) {
-        chatService.deleteChat(chatId);
-        template.convertAndSend("/sub/chat/delete", chatId);
+    public ResponseEntity<?> deleteChat(@PathVariable Integer chatId) {
+        ChatResponseDto deletedChat = chatService.softDeleteAndReturnDto(chatId);
+        template.convertAndSend("/sub/chat/delete", deletedChat); // DTO 전체 전달
         return ResponseEntity.noContent().build();
     }
 
-    // WebSocket: 온라인 유저 리스트 조회
+    // WebSocket: 온라인 유저 리스트 조회/갱신
     @MessageMapping("/chat/{moimId}/online")
     public void getOnlineUserList(@DestinationVariable Integer moimId) {
         Set<Integer> userSet = chatOnlineUsersState.getOnlineUsersByMoim().get(moimId);
-        if (userSet != null && !userSet.isEmpty()) {
-            template.convertAndSend("/sub/chat/" + moimId + "/online",
-                    userSet.stream().map(String::valueOf).toList());
-        }
+
+        // 🔥 null일 경우 빈 리스트라도 무조건 브로드캐스트
+        template.convertAndSend(
+                "/sub/chat/" + moimId + "/online",
+                userSet == null ? List.of() : userSet.stream().map(String::valueOf).toList()
+        );
     }
 
     // WebSocket: 유저 오프라인 처리
@@ -145,5 +157,82 @@ public class ChattingController {
     public void userOffline(@DestinationVariable Integer moimId,
                             @DestinationVariable Integer userId) {
         chatOnlineUsersState.removeOnlineUserByMoimId(moimId, userId);
+
+        // 🔥 오프라인 반영 후 즉시 브로드캐스트
+        Set<Integer> userSet = chatOnlineUsersState.getOnlineUsersByMoim().get(moimId);
+        template.convertAndSend(
+                "/sub/chat/" + moimId + "/online",
+                userSet == null ? List.of() : userSet.stream().map(String::valueOf).toList()
+        );
+    }
+
+    @PostMapping("/{chatId}/read")
+    public ResponseEntity<?> readUser(@PathVariable Integer chatId) {
+        boolean isNew = chatService.readUser(chatId);
+        return ResponseEntity.ok(isNew);
+    }
+
+    @GetMapping("/{chatId}/read")
+    public ResponseEntity<List<Integer>> readList(@PathVariable Integer chatId) {
+        List<Integer> readUsers = chatService.readList(chatId);
+        return ResponseEntity.ok(readUsers);
+    }
+
+    @MessageMapping("/chat/{moimId}/read")
+    public void handleRead(@DestinationVariable Integer moimId, @Payload ChatReadDto dto) {
+        chatService.readUser(dto.getChatId(), dto.getUserId());
+        int totalMembers = moimMapper.countMemberByMoimId(moimId);
+        int readCount = chatReadMapper.countUserByChatId(dto.getChatId());
+        int unreadCount = totalMembers - readCount;
+        System.out.println("asasa"+unreadCount);
+
+        template.convertAndSend(
+                "/sub/chat/" + moimId + "/read",
+                Map.of(
+                        "chatId", dto.getChatId(),
+                        "userId", dto.getUserId(),
+                        "unreadCount", unreadCount
+                )
+        );
+    }
+
+    @MessageMapping("/chat/{moimId}/initRead")
+    public void initRead(@DestinationVariable Integer moimId,
+                         @Header("simpSessionAttributes") Map<String, Object> sessionAttrs) {
+
+        Object userIdObj = sessionAttrs.get("userId");
+        if (userIdObj == null) return;
+
+        Integer userId = (userIdObj instanceof Integer)
+                ? (Integer) userIdObj
+                : Integer.parseInt(userIdObj.toString());
+
+        List<Chat> chatList = chatMapper.getMessages(moimId, 100, 0); // 필요시 limit/offset 조정
+        int totalMembers = moimMapper.countMemberByMoimId(moimId);
+
+        for (Chat chat : chatList) {
+            // 🔹 사용자를 읽음 처리
+            chatService.readUser(chat.getChatId(), userId);
+
+            int readCount = chatReadMapper.countUserByChatId(chat.getChatId());
+            int unreadCount = totalMembers - readCount;
+
+            template.convertAndSend(
+                    "/sub/chat/" + moimId + "/read",
+                    Map.of(
+                            "chatId", chat.getChatId(),
+                            "userId", userId,
+                            "unreadCount", unreadCount
+                    )
+            );
+        }
+    }
+
+    @GetMapping("/{moimId}/")
+    public ResponseEntity<?> getUsers(@PathVariable Integer moimId,
+                                      @RequestParam(defaultValue = "70") Integer limit,
+                                      @RequestParam(defaultValue = "0") Integer offset) {
+        List<ChatResponseDto> chats = chatService.getChatsWithUnreadCount(moimId, limit, offset);
+        return ResponseEntity.ok(chats);
     }
 }

@@ -1,5 +1,6 @@
 package com.korit.nomoreback.service;
 
+import com.korit.nomoreback.domain.forum.*;
 import com.korit.nomoreback.domain.moim.Moim;
 import com.korit.nomoreback.domain.moim.MoimMapper;
 import com.korit.nomoreback.domain.moimRole.MoimRoleMapper;
@@ -9,7 +10,6 @@ import com.korit.nomoreback.security.model.PrincipalUtil;
 import com.korit.nomoreback.util.ImageUrlUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -24,6 +24,9 @@ public class MoimService {
     private final PrincipalUtil principalUtil;
     private final FileService fileService;
     private final ImageUrlUtil imageUrlUtil;
+    private final ForumMapper forumMapper;
+    private final ForumCommentMapper forumCommentMapper;
+    private final ForumLikeMapper forumLikeMapper;
 
     public User getCurrentUser() {
         return principalUtil.getPrincipalUser().getUser();
@@ -67,7 +70,6 @@ public class MoimService {
 
 
     public void joinMoim(Integer moimId) {
-
         Integer userId = getCurrentUser().getUserId();
 
         Moim moim = moimMapper.findMoimId(moimId);
@@ -98,12 +100,15 @@ public class MoimService {
 
         Integer userId = getCurrentUser().getUserId();
 
-        MoimRoleDto isOwner = moimRoleMapper.findMoimRole(userId,moimId);
+        String isOwner = moimRoleMapper.findMoimRole(userId,moimId);
 
-        if ("OWNER".equals(isOwner.getMoimRole())){
+        if ("OWNER".equals(isOwner)){
             return;
         }
 
+        forumMapper.deleteByUserIdAndMoimId(userId, moimId);
+        forumLikeMapper.deleteByUserIdAndMoimId(userId, moimId);
+        forumCommentMapper.deleteByUserIdAndMoimId(userId,moimId);
         moimMapper.updateMoimCount(moimId);
         moimRoleMapper.exitMoim(moimId, userId);
     }
@@ -114,22 +119,23 @@ public class MoimService {
         return findMoim;
     }
 
-    @Transactional(rollbackFor = Exception.class)
     public void modifyMoim(MoimModifyDto modifyDto) {
+        System.out.println(modifyDto);
         Integer userId = getCurrentUser().getUserId();
-        MoimRoleDto roleDto = moimRoleMapper.findMoimRole(userId, modifyDto.getMoimId());
+        String roleDto = moimRoleMapper.findMoimRole(userId, modifyDto.getMoimId());
         String userRole = getCurrentUser().getUserRole();
-        String role = roleDto.getMoimRole();
+        String role = roleDto;
         Moim moim = modifyDto.toEntity();
 
-        if (!"ROLE_ADMIN".equals(userRole) || !"OWNER".equals(role)) {
+        if ("ROLE_ADMIN".equals(userRole) || "OWNER".equals(role)) {
             Moim originMoim = moimMapper.findMoimId(modifyDto.getMoimId());
+            System.out.println("img: " + originMoim.getMoimImgPath());
             MultipartFile newImgFile = modifyDto.getMoimImgPath();
             if (originMoim.getMemberCount() > modifyDto.getMaxMember()) {
                 throw new IllegalArgumentException("모임 정원 초과.");
             }
             if (newImgFile != null && !newImgFile.isEmpty()) {
-                fileService.deleteFile(originMoim.getMoimImgPath());
+                fileService.deleteFile(originMoim.getMoimImgPath(), "moim");
                 String savedFileName = fileService.uploadFile(newImgFile, "moim");
                 moim.setMoimImgPath(savedFileName);
             }
@@ -140,7 +146,7 @@ public class MoimService {
     public void deleteMoim(Integer moimId) {
         Integer userId = getCurrentUser().getUserId();
         String userRole = getCurrentUser().getUserRole();
-        MoimRoleDto roleDto = moimRoleMapper.findMoimRole(userId, moimId);
+        String roleDto = moimRoleMapper.findMoimRole(userId, moimId);
 
         if ("ROLE_ADMIN".equals(userRole)) {
             moimMapper.deleteMoimById(moimId);
@@ -148,7 +154,7 @@ public class MoimService {
             if (roleDto == null) {
                 return;
             }
-            String role = roleDto.getMoimRole();
+            String role = roleDto;
             if (!"OWNER".equals(role)){
                 throw new IllegalArgumentException("권한 없는 사용자");
             }

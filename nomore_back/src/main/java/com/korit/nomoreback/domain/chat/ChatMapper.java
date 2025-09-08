@@ -18,4 +18,9 @@ public interface ChatMapper {
     void deleteChatById(@Param("chatId") Integer chatId);
 
     Chat findByChatId(@Param("chatId") Integer chatId);
+
+    Integer softDeleteChat(@Param("chatId") Integer chatId);
+
+    void deleteByMoimId(@Param("moimId")Integer moimId);
+
 }

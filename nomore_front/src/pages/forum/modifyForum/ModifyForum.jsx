@@ -7,14 +7,21 @@ import useForumCategoryQuery from '../../../queries/useForumCategoryQuery';
 import { Upload, X } from 'lucide-react';
 import { BsSendArrowUpFill } from 'react-icons/bs';
 import { useQueryClient } from '@tanstack/react-query';
+import usePrincipalQuery from '../../../queries/usePrincipalQuery.jsx';
 
 function ModifyForum(props) {
+    const principalQuery = usePrincipalQuery();
+    const userId = principalQuery?.data?.data?.user?.userId;
+    const userRole = principalQuery?.data?.data?.user?.userRole;
+    console.log("userId",userId)
+    console.log("userRole",userRole)
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [searchParam] = useSearchParams();
     const forumId = searchParam.get("forumId");
-
     const [forum, setForum] = useState(null);
+
+    console.log("forum", forum)
 
     const [forumValue, setForumValue] = useState({
         forumTitle: "",
@@ -133,7 +140,21 @@ function ModifyForum(props) {
             alert("게시글 등록에 실패했습니다.");
         }
     };
+    if (principalQuery.isLoading) {
+        return <div>로딩 중입니다...</div>;
+    }
 
+    if (!userId || !userRole) {
+        navigate("/")
+    }
+
+    const isAdmin = userRole === "ROLE_ADMIN";
+    const isOwner = userId === forum?.user?.userId || userId === forum?.moim?.userId;
+
+    if (!isAdmin && !isOwner) {
+        navigate("/")
+    }
+    
     return (
         <div css={s.layout}>
             <h1>게시글 수정</h1>
